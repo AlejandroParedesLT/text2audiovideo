@@ -1,0 +1,7 @@
+audiovid_venv
+.env
+__pycache__/
+weights/
+diffusers/
+ext_weights/
+dataset/

@@ -1,0 +1,4 @@
+gpu-compute5
+Thu Apr 24 08:23:58 PM EDT 2025
+ && source \$VENV_DIR/bin/activate && huggingface-cli login --token: line 1: $HOME/finalCS590-text2audiovideo/text2Movie/.env: No such file or directory
+srun: error: gpu-compute5: task 0: Exited with exit code 1
