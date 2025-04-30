@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH -t 1:00:00  # time requested in hour:minute:second
 #SBATCH --mem=64G
-#SBATCH --gres=gpu:2
-#SBATCH --constraint=v100
+#SBATCH --gres=gpu:1
+#SBATCH --constraint=a6000
 #SBATCH --partition=compsci-gpu
 #SBATCH --output=slurm_%j.out
 #SBATCH --signal=B:SIGTERM@1800

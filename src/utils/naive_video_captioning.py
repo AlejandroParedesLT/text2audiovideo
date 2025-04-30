@@ -20,6 +20,11 @@ builtins.List = typing.List
 # Init dotenv
 from dotenv import load_dotenv
 load_dotenv()
+# Login to HuggingFace
+from huggingface_hub import login
+login(token=os.getenv("HUGGINGFACE_TOKEN"))
+
+
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -38,18 +43,16 @@ def get_args():
 SYSTEM_PROMPT = """
 You are part of a team of people that create videos using generative models. You use a video-generation model that can generate a video about anything you describe.
 
-For example, if you respond with "A beautiful morning in the woods with the sun peaking through the trees", the video generation model will create a video of exactly as described. You task is to summarize the descriptions of videos provided to by users, and create details prompts to feed into the generative model.
-
 There are a few rules to follow:
 - You will only ever output a single video description per request.
 - If the user mentions to summarize the prompt in [X] words, make sure to not exceed the limit.
 - Part of the prompt should be a description of the scene, and part of it should be a description of the action.
-
-You responses should just be the video generation prompt. Here are examples:
-- "A detailed wooden toy ship with intricately carved masts and sails is seen gliding smoothly over a plush, blue carpet that mimics the waves of the sea. The ship's hull is painted a rich brown, with tiny windows. The carpet, soft and textured, provides a perfect backdrop, resembling an oceanic expanse. Surrounding the ship are various other toys and children's items, hinting at a playful environment. The scene captures the innocence and imagination of childhood, with the toy ship's journey symbolizing endless adventures in a whimsical, indoor setting."
-- "A street artist, clad in a worn-out denim jacket and a colorful bandana, stands before a vast concrete wall in the heart, holding a can of spray paint, spray-painting a colorful bird on a mottled wall"
-
 """.strip()
+
+# You responses should just be the video generation prompt. Here are examples:
+#- "A detailed wooden toy ship with intricately carved masts and sails is seen gliding smoothly over a plush, blue carpet that mimics the waves of the sea. The ship's hull is painted a rich brown, with tiny windows. The carpet, soft and textured, provides a perfect backdrop, resembling an oceanic expanse. Surrounding the ship are various other toys and children's items, hinting at a playful environment. The scene captures the innocence and imagination of childhood, with the toy ship's journey symbolizing endless adventures in a whimsical, indoor setting."
+#- "A street artist, clad in a worn-out denim jacket and a colorful bandana, stands before a vast concrete wall in the heart, holding a can of spray paint, spray-painting a colorful bird on a mottled wall"
+
 
 USER_PROMPT = """
 Could you generate a prompt for a video generation model for the following video summary:
@@ -110,7 +113,11 @@ def main(args: Dict[str, Any]):
     video_files = [os.path.join(args.instance_data_root, file) for file in video_files]
     video_descriptions = {}
 
-    model_id = "openbmb/MiniCPM-V-2_6"
+    # model_id = "openbmb/MiniCPM-V-2_6"
+    model_id = "marianna13/llava-phi-2-3b"
+    # from transformers import pipeline
+    # pipe = pipeline("text-generation", model="marianna13/llava-phi-2-3b", trust_remote_code=True)
+
     model = AutoModel.from_pretrained(
         model_id, trust_remote_code=True, attn_implementation="sdpa", torch_dtype=torch.bfloat16, token=os.getenv("HUGGINGFACE_TOKEN")
     ).to("cuda")
@@ -119,14 +126,19 @@ def main(args: Dict[str, Any]):
     for filepath in video_files:
         print(f"Generating video summary for file: `{filepath}`")
         frames = encode_video(filepath)
-        msgs = [{"role": "user", "content": frames + [QUESTION]}]
+        print(f"Number of frames: {len(frames)}")
+        # msgs = [{"role": "user", "content": frames + [QUESTION]}]
+
+        msgs = [{"role": "user", "content": QUESTION}]
 
         params = {
             "use_image_id": False,
             "max_slice_nums": 10,
         }
 
-        description = model.chat(image=None, msgs=msgs, tokenizer=tokenizer, **params)
+        # description = model.chat(image=None, msgs=msgs, tokenizer=tokenizer, **params)
+        description = model.chat(image=frames, msgs=msgs, tokenizer=tokenizer, **params)
+        print(f"Video summary: {description}")
         video_descriptions[filepath] = {"summary": description}
 
     del model
@@ -141,7 +153,7 @@ def main(args: Dict[str, Any]):
         "text-generation",
         model=model_id,
         device_map="auto",
-        token=os.getenv("HUGGINGFACE_TOKEN"),  # <- add this line
+        token=os.getenv("HUGGINGFACE_TOKEN"),
         model_kwargs={
             "local_files_only": True,
             "cache_dir": args.cache_dir,
